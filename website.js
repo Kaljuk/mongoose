@@ -24,7 +24,7 @@ try {
 
 require('acquit-ignore')();
 
-const markdown = require('marked');
+const { marked: markdown } = require('marked');
 const highlight = require('highlight.js');
 const renderer = {
   heading: function(text, level, raw, slugger) {
@@ -37,15 +37,21 @@ const renderer = {
   }
 };
 markdown.setOptions({
-  highlight: function(code) {
-    return highlight.highlight('JavaScript', code).value;
+  highlight: function(code, language) {
+    if (!language) {
+      language = 'javascript';
+    }
+    if (language === 'no-highlight') {
+      return code;
+    }
+    return highlight.highlight(code, { language }).value;
   }
 });
 markdown.use({ renderer });
 
 const tests = [
   ...acquit.parse(fs.readFileSync('./test/geojson.test.js').toString()),
-  ...acquit.parse(fs.readFileSync('./test/docs/transactions.test-quiz.js').toString()),
+  ...acquit.parse(fs.readFileSync('./test/docs/transactions.test.js').toString()),
   ...acquit.parse(fs.readFileSync('./test/schema.alias.test.js').toString()),
   ...acquit.parse(fs.readFileSync('./test/model.middleware.test.js').toString()),
   ...acquit.parse(fs.readFileSync('./test/docs/date.test.js').toString()),
@@ -154,12 +160,12 @@ function pugify(filename, options, newfile) {
 
   options.marked = markdown;
   options.markedCode = function(v) {
-    return markdown('```javascript\n' + v + '\n```');
+    return markdown.parse('```javascript\n' + v + '\n```');
   };
   options.filename = filename;
   options.filters = {
     markdown: function(block) {
-      return markdown(block);
+      return markdown.parse(block);
     }
   };
 

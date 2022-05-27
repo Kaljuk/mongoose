@@ -75,7 +75,9 @@ movieSchema.index({ rating: -1 });
 movieSchema.index({ title: 1 }, { unique: true });
 
 // Using `SchemaDefinition`
-interface IProfile { age: number; }
+interface IProfile {
+  age: number;
+}
 interface ProfileDoc extends Document, IProfile {}
 const ProfileSchemaDef: SchemaDefinition<IProfile> = { age: Number };
 export const ProfileSchema = new Schema<ProfileDoc, Model<ProfileDoc>, ProfileDoc>(ProfileSchemaDef);
@@ -193,7 +195,7 @@ function gh10605() {
 
 function gh10605_2() {
   interface ITestSchema extends Document {
-    someObject: Array<{id: string}>
+    someObject: Array<{ id: string }>
   }
 
   const testSchema = new Schema<ITestSchema>({
@@ -268,7 +270,7 @@ function gh10789() {
 function gh11439() {
   type Book = {
     collection: string
-  }
+  };
 
   const bookSchema = new Schema<Book>({
     collection: String
@@ -305,3 +307,15 @@ function gh11435(): void {
 new Schema({}, { expires: '5 seconds' });
 expectError(new Schema({}, { expireAfterSeconds: '5 seconds' }));
 new Schema({}, { expireAfterSeconds: 5 });
+
+function gh10900(): void {
+  type TMenuStatus = Record<string, 'EXPANDED' | 'COLLAPSED'>[];
+
+  interface IUserProp {
+    menuStatus: TMenuStatus;
+  }
+
+  const patientSchema = new Schema<IUserProp>({
+    menuStatus: { type: Schema.Types.Mixed, default: {} }
+  });
+}
