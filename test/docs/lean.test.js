@@ -1,7 +1,6 @@
 'use strict';
 
 const assert = require('assert');
-const v8Serialize = require('v8').serialize;
 const start = require('../common');
 
 // This file is in `es-next` because it uses async/await for convenience
@@ -22,7 +21,17 @@ describe('Lean Tutorial', function() {
     mongoose.deleteModel(/Group/);
   });
 
+  after(async () => {
+    await mongoose.disconnect();
+  })
+
   it('compare sizes lean vs not lean', async function() {
+    // acquit:ignore:start
+    if (typeof Deno !== 'undefined') {
+      return this.skip(); // Deno does not support v8.serialize()
+    }
+    const v8Serialize = require('v8').serialize;
+    // acquit:ignore:end
     const schema = new mongoose.Schema({ name: String });
     const MyModel = mongoose.model('Test', schema);
 
@@ -32,15 +41,15 @@ describe('Lean Tutorial', function() {
     // To enable the `lean` option for a query, use the `lean()` function.
     const leanDoc = await MyModel.findOne().lean();
 
-    v8Serialize(normalDoc).length; // approximately 300
-    v8Serialize(leanDoc).length; // 32, more than 10x smaller!
+    v8Serialize(normalDoc).length; // approximately 180
+    v8Serialize(leanDoc).length; // 32, about 5x smaller!
 
     // In case you were wondering, the JSON form of a Mongoose doc is the same
     // as the POJO. This additional memory only affects how much memory your
     // Node.js process uses, not how much data is sent over the network.
     JSON.stringify(normalDoc).length === JSON.stringify(leanDoc).length; // true
     // acquit:ignore:start
-    assert.ok(v8Serialize(normalDoc).length >= 300 && v8Serialize(normalDoc).length <= 800, v8Serialize(normalDoc).length);
+    assert.ok(v8Serialize(normalDoc).length >= 150 && v8Serialize(normalDoc).length <= 200, v8Serialize(normalDoc).length);
     assert.equal(v8Serialize(leanDoc).length, 32);
     assert.equal(JSON.stringify(normalDoc).length, JSON.stringify(leanDoc).length);
     // acquit:ignore:end

@@ -6,10 +6,6 @@
   });
 </script>
 
-<div class="native-inline">
-  <a href="#native_link#"><span class="sponsor">Sponsor</span> #native_company# — #native_desc#</a>
-</div>
-
 [GeoJSON](http://geojson.org/) is a format for storing geographic points and
 polygons. [MongoDB has excellent support for geospatial queries](http://thecodebarbarian.com/80-20-guide-to-mongodb-geospatial-queries)
 on GeoJSON objects. Let's take a look at how you can use Mongoose to store
@@ -50,7 +46,7 @@ const citySchema = new mongoose.Schema({
 });
 ```
 
-Using [subdocuments](/docs/subdocs.html), you can define a common `pointSchema` and reuse it everywhere you want to store a GeoJSON point.
+Using [subdocuments](subdocs.html), you can define a common `pointSchema` and reuse it everywhere you want to store a GeoJSON point.
 
 ```javascript
 const pointSchema = new mongoose.Schema({
@@ -123,7 +119,7 @@ that the MongoDB driver does. For example, the below script saves a
 `city` document those `location` property is a GeoJSON point representing
 the city of Denver, Colorado. It then queries for all documents within
 a polygon representing the state of Colorado using
-[the MongoDB `$geoWithin` operator](https://docs.mongodb.com/manual/reference/operator/query/geoWithin/).
+[the MongoDB `$geoWithin` operator](https://www.mongodb.com/docs/manual/reference/operator/query/geoWithin/).
 
 <img src="https://i.imgur.com/i32pWnC.png">
 
@@ -131,7 +127,7 @@ a polygon representing the state of Colorado using
 [require:geojson.*driver query]
 ```
 
-Mongoose also has a [`within()` helper](/docs/api.html#query_Query-within)
+Mongoose also has a [`within()` helper](api/query.html#query_Query-within)
 that's a shorthand for `$geoWithin`.
 
 ```javascript
@@ -140,7 +136,7 @@ that's a shorthand for `$geoWithin`.
 
 <h2 id="geospatial-indexes">Geospatial Indexes</h2>
 
-MongoDB supports [2dsphere indexes](https://docs.mongodb.com/manual/core/2dsphere/)
+MongoDB supports [2dsphere indexes](https://www.mongodb.com/docs/manual/core/2dsphere/)
 for speeding up geospatial queries. Here's how you can define
 a 2dsphere index on a GeoJSON point:
 
@@ -148,13 +144,13 @@ a 2dsphere index on a GeoJSON point:
 [require:geojson.*index$]
 ```
 
-You can also define a geospatial index using the [`Schema#index()` function](/docs/api/schema.html#schema_Schema-index)
+You can also define a geospatial index using the [`Schema#index()` function](api/schema.html#schema_Schema-index)
 as shown below.
 
 ```javascript
 citySchema.index({ location: '2dsphere' });
 ```
 
-MongoDB's [`$near` query operator](https://docs.mongodb.com/v4.0/reference/operator/query/near/#op._S_near)
-and [`$geoNear` aggregation stage](https://docs.mongodb.com/manual/reference/operator/aggregation/geoNear/#pipe._S_geoNear)
+MongoDB's [`$near` query operator](https://www.mongodb.com/docs/manual/reference/operator/query/near/)
+and [`$geoNear` aggregation stage](https://www.mongodb.com/docs/manual/reference/operator/aggregation/geoNear/#pipe._S_geoNear)
 _require_ a 2dsphere index. 

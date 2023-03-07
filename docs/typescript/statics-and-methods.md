@@ -5,7 +5,7 @@ With a little extra configuration, you can also register methods and statics in 
 
 ## Methods
 
-To define an [instance method](/docs/guide.html#methods) in TypeScript, create a new interface representing your instance methods.
+To define an [instance method](../guide.html#methods) in TypeScript, create a new interface representing your instance methods.
 You need to pass that interface as the 3rd generic parameter to the `Schema` constructor **and** as the 3rd generic parameter to `Model` as shown below.
 
 ```typescript
@@ -41,7 +41,7 @@ const fullName: string = user.fullName(); // 'Jean-Luc Picard'
 
 ## Statics
 
-Mongoose [models](/docs/models.html) do **not** have an explicit generic parameter for [statics](/docs/guide.html#statics).
+Mongoose [models](../models.html) do **not** have an explicit generic parameter for [statics](../guide.html#statics).
 If your model has statics, we recommend creating an interface that [extends](https://www.typescriptlang.org/docs/handbook/interfaces.html) Mongoose's `Model` interface as shown below.
 
 ```typescript
@@ -65,6 +65,27 @@ const User = model<IUser, UserModel>('User', schema);
 const answer: number = User.myStaticMethod(); // 42
 ```
 
+Mongoose does support auto typed static functions now that it is supplied in schema options.
+Statics functions can be defined as following:
+
+```typescript
+import { Schema, model } from 'mongoose';
+
+const schema = new Schema(
+  { name: String },
+  {
+    statics: {
+      myStaticMethod() {
+        return 42;
+      },
+    },
+  }
+);
+
+const User = model('User', schema);
+
+const answer = User.myStaticMethod(); // 42
+```
 ## Both Methods and Statics
 
 Below is how you can define a model that has both methods and statics.
@@ -91,7 +112,7 @@ const schema = new Schema<IUser, UserModel, IUserMethods>({
 });
 schema.static('createWithFullName', function createWithFullName(name: string) {
   const [firstName, lastName] = name.split(' ');
-  return User.create({ firstName, lastName });
+  return this.create({ firstName, lastName });
 });
 schema.method('fullName', function fullName(): string {
   return this.firstName + ' ' + this.lastName;

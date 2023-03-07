@@ -1,7 +1,7 @@
 ## Change Streams
 
-[Change streams](https://www.mongodb.com/developer/quickstart/nodejs-change-streams-triggers/) let you listen for updates to documents in a given model's collection, or even documents in an entire database.
-Unlike [middleware](/docs/middleware.html), change streams are a MongoDB server construct, which means they pick up changes from anywhere.
+[Change streams](https://www.mongodb.com/developer/languages/javascript/nodejs-change-streams-triggers/) let you listen for updates to documents in a given model's collection, or even documents in an entire database.
+Unlike [middleware](middleware.html), change streams are a MongoDB server construct, which means they pick up changes from anywhere.
 Even if you update a document from a MongoDB GUI, your Mongoose change stream will be notified.
 
 The `watch()` function creates a change stream.
@@ -50,7 +50,7 @@ For local development, we recommend [mongodb-memory-server](https://www.npmjs.co
 
 ### Iterating using `next()`
 
-If you want to iterate through a change stream in a [AWS Lambda function](/docs/lambda.html), do **not** use event emitters to listen to the change stream.
+If you want to iterate through a change stream in a [AWS Lambda function](lambda.html), do **not** use event emitters to listen to the change stream.
 You need to make sure you close your change stream when your Lambda function is done executing, because your change stream may end up in an inconsistent state if Lambda stops your container while the change stream is pulling data from MongoDB.
 
 Change streams also have a `next()` function that lets you explicitly wait for the next change to come in.
@@ -65,9 +65,7 @@ exports.handler = async (event, context) => {
   context.callbackWaitsForEmptyEventLoop = false;
 
   await connectToDatabase();
-  
-  // Use MongoDB Node driver's `watch()` function, because Mongoose change streams
-  // don't support `next()` yet. See https://github.com/Automattic/mongoose/issues/11527
+
   const changeStream = await Country.watch([], { resumeAfter });
 
   // Change stream `next()` will wait forever if there are no changes. So make sure to

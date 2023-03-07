@@ -1,13 +1,14 @@
-import { Schema, model, Document, Types } from 'mongoose';
+import { Schema, model, Document, Expression, PipelineStage, Types, Model, Aggregate } from 'mongoose';
 import { expectType } from 'tsd';
 
 const schema: Schema = new Schema({ name: { type: 'String' } });
 
-interface ITest extends Document {
+interface ITest {
   name?: string;
 }
 
-const Test = model<ITest>('Test', schema);
+const Test = model('Test', schema);
+const AnotherTest = model('AnotherTest', schema);
 
 Test.aggregate([{ $match: { name: 'foo' } }]).exec().then((res: any) => console.log(res));
 
@@ -60,4 +61,78 @@ async function run() {
   expectType<ITest[]>(await Test.aggregate<ITest>().sort({ name: 'desc' }));
   expectType<ITest[]>(await Test.aggregate<ITest>().sort({ name: 'descending' }));
   expectType<ITest[]>(await Test.aggregate<ITest>().sort({ name: { $meta: 'textScore' } }));
+
+  // Aggregate.prototype.model()
+  expectType<Model<any>>(Test.aggregate<ITest>().model());
+  expectType<Aggregate<ITest[]>>(Test.aggregate<ITest>().model(AnotherTest));
+}
+
+function gh12017_1() {
+  const a: Expression = { $subtract: [
+    { $dayOfWeek: new Date() } as Expression.DayOfWeek, // errors
+    2
+  ] };
+}
+
+function gh12017_2() {
+  const a: Expression.Reduce = {
+    $reduce: {
+      input: '$values',
+      initialValue: { depth: -1 }, // errors
+      in: {
+        depth: '$$this.depth' // errors
+      }
+    }
+  };
+
+  const b: Expression.Reduce = {
+    $reduce: {
+      input: '$values',
+      initialValue: 0,
+      in: { $add: ['$$value', '$$this'] }
+    }
+  };
+
+  const c: PipelineStage.Set = {
+    $set: {
+      child: {
+        foo: 'bar' // errors
+      },
+      friend: new Types.ObjectId()
+    }
+  };
+
+  const d: Expression.ToInt = { $toInt: 2.5 };
+}
+
+
+function gh12311() {
+  const densifyWithDates: PipelineStage.Densify = {
+    $densify: {
+      field: 'timestamp',
+      range: {
+        step: 1,
+        unit: 'hour',
+        bounds: [new Date('2022-01-01'), new Date('2022-12-31')]
+      }
+    }
+  };
+  const densifyWithNumbers: PipelineStage.Densify = {
+    $densify: {
+      field: 'age',
+      range: {
+        step: 1,
+        bounds: [30, 90]
+      }
+    }
+  };
+  const densifyWithFullBounds: PipelineStage.Densify = {
+    $densify: {
+      field: 'age',
+      range: {
+        step: 1,
+        bounds: 'full'
+      }
+    }
+  };
 }

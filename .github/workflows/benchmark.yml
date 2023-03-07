@@ -1,21 +1,19 @@
-name: Benchmark
+name: TypeScript Benchmark
 on:
   pull_request:
     paths:
-      - '.github/workflows/benchmark.yml'
-      - 'package.json'
-      - 'types/**'
-      - 'benchmarks/typescript/**'
-      - 'benchmarks/typescript.js'
+      - ".github/workflows/benchmark.yml"
+      - "package.json"
+      - "types/**"
+      - "benchmarks/typescript/**"
   push:
     branches:
       - master
     paths:
-      - '.github/workflows/benchmark.yml'
-      - 'package.json'
-      - 'types/**'
-      - 'benchmarks/typescript/**'
-      - 'benchmarks/typescript.js'
+      - ".github/workflows/benchmark.yml"
+      - "package.json"
+      - "types/**"
+      - "benchmarks/typescript/**"
 permissions:
   contents: read
 
@@ -24,15 +22,16 @@ jobs:
     runs-on: ubuntu-20.04
     name: Benchmark TypeScript Types
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b # v3.0.2
-
+      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+        with:
+          fetch-depth: 0
       - name: Setup node
-        uses: actions/setup-node@56337c425554a6be30cdef71bf441f15be286854 # v3.1.1
+        uses: actions/setup-node@64ed1c7eab4cce3362f8c340dee64e5eaeef8f7c # v3.6.0
         with:
           node-version: 16
 
       - run: npm install
 
-      - run: node ./benchmarks/typescript
-        env:
-          DB_URL: ${{ secrets.DB_URL }}
+      - run: node ./scripts/create-tarball.js
+
+      - run: npm run ts-benchmark

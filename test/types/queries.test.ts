@@ -1,6 +1,22 @@
-import { HydratedDocument, Schema, model, Document, Types, Query, Model, QueryWithHelpers, PopulatedDoc, FilterQuery, UpdateQuery } from 'mongoose';
+import {
+  HydratedDocument,
+  Schema,
+  model,
+  Document,
+  Types,
+  Query,
+  Model,
+  QueryWithHelpers,
+  PopulatedDoc,
+  FilterQuery,
+  UpdateQuery,
+  ApplyBasicQueryCasting,
+  QuerySelector
+} from 'mongoose';
 import { ObjectId } from 'mongodb';
 import { expectError, expectType } from 'tsd';
+import { autoTypedModel } from './models.test';
+import { AutoTypedSchemaType } from './schema.test';
 
 interface QueryHelpers {
   _byName(this: QueryWithHelpers<any, ITest, QueryHelpers>, name: string): QueryWithHelpers<Array<ITest>, ITest, QueryHelpers>;
@@ -30,17 +46,17 @@ schema.query.byName = function(name: string): QueryWithHelpers<any, ITest, Query
 interface Child {
   name: string;
 }
-interface ISubdoc extends Document {
+interface ISubdoc {
   myId?: Types.ObjectId;
   id?: number;
   tags?: string[];
 }
 
-interface ITest extends Document {
+interface ITest {
   name?: string;
   age?: number;
   parent?: Types.ObjectId;
-  child?: PopulatedDoc<Child & Document<ObjectId>>,
+  child?: PopulatedDoc<HydratedDocument<Child>>,
   tags?: string[];
   docs?: ISubdoc[];
   endDate?: Date;
@@ -120,9 +136,6 @@ Test.findByIdAndUpdate({ name: 'test' }, { name: 'test2' }, (err: any, doc) => c
 
 Test.findOneAndUpdate({ name: 'test' }, { 'docs.0.myId': '0'.repeat(24) });
 
-const query: Query<ITest | null, ITest> = Test.findOne();
-query instanceof Query;
-
 // Chaining
 Test.findOne().where({ name: 'test' });
 Test.where().find({ name: 'test' });
@@ -137,6 +150,20 @@ const p1: Record<string, number> = Test.find().projection('age docs.id');
 const p2: Record<string, number> | null = Test.find().projection();
 const p3: null = Test.find().projection(null);
 
+// Sorting
+Test.find().sort();
+Test.find().sort('-name');
+Test.find().sort({ name: -1 });
+Test.find().sort({ name: 'ascending' });
+Test.find().sort(undefined);
+Test.find().sort(null);
+Test.find().sort([['key', 'ascending']]);
+Test.find().sort([['key1', 'ascending'], ['key2', 'descending']]);
+expectError(Test.find().sort({ name: 2 }));
+expectError(Test.find().sort({ name: 'invalidSortOrder' }));
+expectError(Test.find().sort([['key', 'invalid']]));
+expectError(Test.find().sort([['key', false]]));
+expectError(Test.find().sort(['invalid']));
 
 // Super generic query
 function testGenericQuery(): void {
@@ -152,10 +179,10 @@ function testGenericQuery(): void {
 
 function eachAsync(): void {
   Test.find().cursor().eachAsync((doc) => {
-    expectType<(ITest & { _id: any; })>(doc);
+    expectType<HydratedDocument<ITest, {}, QueryHelpers>>(doc);
   });
   Test.find().cursor().eachAsync((docs) => {
-    expectType<(ITest & { _id: any; })[]>(docs);
+    expectType<HydratedDocument<ITest, {}, QueryHelpers>[]>(docs);
   }, { batchSize: 2 });
 }
 
@@ -268,13 +295,141 @@ async function gh11306(): Promise<void> {
   expectType<string[]>(await MyModel.distinct<string>('name'));
 }
 
+function autoTypedQuery() {
+  const AutoTypedModel = autoTypedModel();
+  const query = AutoTypedModel.find();
+  expectType<typeof query>(AutoTypedModel.find().byUserName(''));
+}
+
+function gh11964() {
+  type Condition<T> = ApplyBasicQueryCasting<T> | QuerySelector<ApplyBasicQueryCasting<T>>; // redefined here because it's not exported by mongoose
+
+  type WithId<T extends object> = T & { id: string };
+
+  class Repository<T extends object> {
+    /* ... */
+
+    find(id: string) {
+      const idCondition: Condition<WithId<T>>['id'] = id; // error :(
+      const filter: FilterQuery<WithId<T>> = { id }; // error :(
+
+      /* ... */
+    }
+  }
+}
+
+function gh12091() {
+  interface IUser{
+    friendsNames: string[];
+  }
+  const userSchema = new Schema<IUser>({
+    friendsNames: [String]
+  });
+
+  const update: UpdateQuery<IUser> = { $addToSet: { friendsNames: 'John Doe' } };
+  if (!update?.$addToSet) {
+    return;
+  }
+  update.$addToSet.friendsNames = 'Jane Doe';
+}
+
+function gh12142() {
+  const schema = new Schema({ name: String, comments: [{ text: String }] });
+
+  const Test = model('Test', schema);
+
+  Test.updateOne(
+    { _id: new Types.ObjectId() },
+    {
+      $pull: { comments: new Types.ObjectId() }
+    }
+  );
+}
+
+async function gh12342_manual() {
+  interface Project {
+    name?: string, stars?: number
+  }
+
+  interface ProjectQueryHelpers {
+    byName(name: string): QueryWithHelpers<
+    HydratedDocument<Project>[],
+    HydratedDocument<Project>,
+    ProjectQueryHelpers
+    >
+  }
+
+  type ProjectModelType = Model<Project, ProjectQueryHelpers>;
+
+  const ProjectSchema = new Schema<
+  Project,
+  Model<Project, ProjectQueryHelpers>,
+  {},
+  ProjectQueryHelpers
+  >({
+    name: String,
+    stars: Number
+  });
+
+  ProjectSchema.query.byName = function byName(
+    this: QueryWithHelpers<any, HydratedDocument<Project>, ProjectQueryHelpers>,
+    name: string
+  ) {
+    return this.find({ name: name });
+  };
+
+  // 2nd param to `model()` is the Model class to return.
+  const ProjectModel = model<Project, ProjectModelType>('Project', schema);
+
+  expectType<HydratedDocument<Project>[]>(
+    await ProjectModel.findOne().where('stars').gt(1000).byName('mongoose')
+  );
+}
+
+async function gh12342_auto() {
+  interface Project {
+    name?: string, stars?: number
+  }
+
+  const ProjectSchema = new Schema({
+    name: String,
+    stars: Number
+  }, {
+    query: {
+      byName(name: string) {
+        return this.find({ name });
+      }
+    }
+  });
+
+  const ProjectModel = model('Project', ProjectSchema);
+
+  expectType<HydratedDocument<Project>[]>(
+    await ProjectModel.findOne().where('stars').gt(1000).byName('mongoose')
+  );
+}
+
 async function gh11602(): Promise<void> {
-  const updateResult = await Model.findOneAndUpdate(query, { $inc: { occurence: 1 } }, {
+  const query: Query<ITest | null, ITest> = Test.findOne();
+  query instanceof Query;
+
+  const ModelType = model<ITest>('foo', schema);
+
+  const updateResult = await ModelType.findOneAndUpdate(query, { $inc: { occurence: 1 } }, {
     upsert: true,
     returnDocument: 'after',
     rawResult: true
   });
+
   expectError(updateResult.lastErrorObject?.modifiedCount);
   expectType<boolean | undefined>(updateResult.lastErrorObject?.updatedExisting);
   expectType<ObjectId | undefined>(updateResult.lastErrorObject?.upserted);
+
+  ModelType.findOneAndUpdate({}, {}, { returnDocument: 'before' });
+  ModelType.findOneAndUpdate({}, {}, { returnDocument: 'after' });
+  ModelType.findOneAndUpdate({}, {}, { returnDocument: undefined });
+  ModelType.findOneAndUpdate({}, {}, {});
+  expectError(ModelType.findOneAndUpdate({}, {}, {
+    returnDocument: 'not-before-or-after'
+  }));
 }

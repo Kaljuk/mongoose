@@ -52,9 +52,9 @@ html(lang='en')
                 a(href="#").pure-menu-link Version #{package.version}
                 ul.pure-menu-children
                   li.pure-menu-item
-                    a.pure-menu-link(href="/docs/5.x") Version #{package.latest5x}
+                    a.pure-menu-link(href="/docs/6.x") Version #{package.latest6x}
                   li.pure-menu-item
-                    a.pure-menu-link(href="/docs/4.x") Version #{package.latest4x}
+                    a.pure-menu-link(href="/docs/5.x") Version #{package.latest5x}
               li.pure-menu-item.search
                 input#search-input-nav(type="text", placeholder="Search")
                 button#search-button-nav
@@ -118,7 +118,7 @@ html(lang='en')
                 li.pure-menu-item.tertiary-item
                   a.pure-menu-link(href="/docs/typescript/subdocuments.html", class=outputUrl === '/docs/typescript/subdocuments.html' ? 'selected' : '') Subdocuments
               li.pure-menu-item
-                a.pure-menu-link(href="/docs/api.html", class=outputUrl === '/docs/api.html' ? 'selected' : '') API
+                a.pure-menu-link(href="/docs/api/mongoose.html", class=outputUrl === '/docs/api/mongoose.html' ? 'selected' : '') API
               li.pure-menu-item.sub-item
                 a.pure-menu-link(href="/docs/api/mongoose.html", class=outputUrl === '/docs/api/mongoose.html' ? 'selected' : '') Mongoose
               li.pure-menu-item.sub-item
@@ -138,7 +138,7 @@ html(lang='en')
               li.pure-menu-item.sub-item
                 a.pure-menu-link(href="/docs/api/virtualtype.html", class=outputUrl === '/docs/api/virtualtype.html' ? 'selected' : '') VirtualType
               li.pure-menu-item
-                a.pure-menu-link(href="/docs/migrating_to_6.html", class=outputUrl === '/docs/migrating_to_6.html' ? 'selected' : '') Migration Guide
+                a.pure-menu-link(href="/docs/migrating_to_7.html", class=outputUrl === '/docs/migrating_to_7.html' ? 'selected' : '') Migration Guide
               li.pure-menu-item
                 a.pure-menu-link(href="/docs/compatibility.html", class=outputUrl === '/docs/compatibility.html' ? 'selected' : '') Version Compatibility
               li.pure-menu-item
@@ -154,13 +154,12 @@ html(lang='en')
         .container
           #content
             block content
-        include includes/track
 
-        - if (!outputUrl.startsWith('/docs/jobs'))
+        - if (!outputUrl.startsWith('/docs/jobs.html'))
           div#jobs
             each job in jobs
               .job-listing
-                a(href='/jobs' + job._id)
+                a(href='/docs/jobs.html#' + job._id)
                   .company-logo
                     img(src=job.logo)
                   .description
@@ -168,53 +167,8 @@ html(lang='en')
                     .title #{job.title}
                     .location #{job.location}
             .button.jobs-view-more
-              a(href='/docs/jobs') View more jobs!
+              a(href='/docs/jobs.html') View more jobs!
     
 
         script(type="text/javascript" src="/docs/js/navbar-search.js")
-        script(type="text/javascript").
-          (function (window, document) {
-            var layout   = document.getElementById('layout'),
-                menu     = document.getElementById('menu'),
-                menuLink = document.getElementById('menuLink'),
-                content  = document.getElementById('content');
-
-            function toggleClass(element, className) {
-                var classes = element.className.split(/\s+/),
-                    length = classes.length,
-                    i = 0;
-
-                for(; i < length; i++) {
-                  if (classes[i] === className) {
-                    classes.splice(i, 1);
-                    break;
-                  }
-                }
-                // The className is not found
-                if (length === classes.length) {
-                    classes.push(className);
-                }
-
-                element.className = classes.join(' ');
-            }
-
-            function toggleAll(e) {
-                var active = 'active';
-
-                e.preventDefault();
-                toggleClass(layout, active);
-                toggleClass(menu, active);
-                toggleClass(menuLink, active);
-            }
-
-            menuLink.onclick = function (e) {
-                toggleAll(e);
-            };
-
-            content.onclick = function(e) {
-                if (menu.className.indexOf('active') !== -1) {
-                    toggleAll(e);
-                }
-            };
-
-          }(this, this.document));
+        script(type="text/javascript" src="/docs/js/mobile-navbar-toggle.js")

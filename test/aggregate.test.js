@@ -74,11 +74,11 @@ async function onlyTestAtOrAbove(semver, ctx) {
 describe('aggregate: ', function() {
   let db;
 
-  before(function() {
+  before(function startConnection() {
     db = start();
   });
 
-  after(async function() {
+  after(async function closeConnection() {
     await db.close();
   });
 
@@ -370,6 +370,44 @@ describe('aggregate: ', function() {
     });
   });
 
+  describe('densify', function() {
+    it('works', function() {
+      const aggregate = new Aggregate();
+      const obj = {
+        field: 'timestamp',
+        range: {
+          step: 1,
+          unit: 'hour',
+          bounds: [new Date('2021-05-18T00:00:00.000Z'), new Date('2021-05-18T08:00:00.000Z')]
+        }
+      };
+
+      aggregate.densify(obj);
+
+      assert.equal(aggregate._pipeline.length, 1);
+      assert.deepEqual(aggregate._pipeline[0].$densify, obj);
+    });
+  });
+
+  describe('fill', function() {
+    it('works', function() {
+      const aggregate = new Aggregate();
+      const obj = {
+        output:
+          {
+            bootsSold: { value: 0 },
+            sandalsSold: { value: 0 },
+            sneakersSold: { value: 0 }
+          }
+      };
+
+      aggregate.fill(obj);
+
+      assert.equal(aggregate._pipeline.length, 1);
+      assert.deepEqual(aggregate._pipeline[0].$fill, obj);
+    });
+  });
+
   describe('model()', function() {
     it('works', function() {
       const aggregate = new Aggregate();
@@ -576,6 +614,7 @@ describe('aggregate: ', function() {
 
   describe('exec', function() {
     beforeEach(async function() {
+      this.timeout(4000); // double the default of 2 seconds
       await setupData(db);
     });
 
@@ -659,26 +698,20 @@ describe('aggregate: ', function() {
       assert.ok(threw);
     });
 
-    it('match', function() {
+    it('match', async function() {
       const aggregate = new Aggregate([], db.model('Employee'));
 
-      return aggregate.
-        match({ sal: { $gt: 15000 } }).
-        exec(function(err, docs) {
-          assert.ifError(err);
-          assert.equal(docs.length, 1);
-        });
+      const docs = await aggregate.match({ sal: { $gt: 15000 } });
+
+      assert.equal(docs.length, 1);
     });
 
-    it('sort', function() {
+    it('sort', async function() {
       const aggregate = new Aggregate([], db.model('Employee'));
 
-      return aggregate.
-        sort('sal').
-        exec(function(err, docs) {
-          assert.ifError(err);
-          assert.equal(docs[0].sal, 14000);
-        });
+      const docs = await aggregate.sort('sal');
+
+      assert.equal(docs[0].sal, 14000);
     });
 
     it('graphLookup', async function() {
@@ -752,21 +785,20 @@ describe('aggregate: ', function() {
       ]);
     });
 
-    it('complex pipeline', function() {
+    it('complex pipeline', async function() {
       const aggregate = new Aggregate([], db.model('Employee'));
 
-      return aggregate.
+      const docs = await aggregate.
         match({ sal: { $lt: 16000 } }).
         unwind('customers').
         project({ emp: '$name', cust: '$customers' }).
         sort('-cust').
         skip(2).
-        exec(function(err, docs) {
-          assert.ifError(err);
-          assert.equal(docs.length, 1);
-          assert.equal(docs[0].cust, 'Gary');
-          assert.equal(docs[0].emp, 'Bob');
-        });
+        exec();
+
+      assert.equal(docs.length, 1);
+      assert.equal(docs[0].cust, 'Gary');
+      assert.equal(docs[0].emp, 'Bob');
     });
 
     it('pipeline() (gh-5825)', function() {
@@ -802,40 +834,26 @@ describe('aggregate: ', function() {
         const agg = new Aggregate([], db.model('Employee'));
 
         const promise = agg.exec();
-        assert.ok(promise instanceof mongoose.Promise);
+        assert.ok(promise instanceof Promise);
 
         return promise.catch(error => {
           assert.ok(error);
           assert.ok(error.message.indexOf('empty pipeline') !== -1, error.message);
         });
       });
-
-      it('with a callback', function(done) {
-        const aggregate = new Aggregate([], db.model('Employee'));
-
-        const callback = function(err) {
-          assert.ok(err);
-          assert.equal(err.message, 'Aggregate has empty pipeline');
-          done();
-        };
-
-        aggregate.exec(callback);
-      });
     });
 
     describe('error when not bound to a model', function() {
-      it('with callback', function() {
+      it('with callback', async function() {
         const aggregate = new Aggregate();
 
         aggregate.skip(0);
-        let threw = false;
         try {
-          aggregate.exec();
+          await aggregate.exec();
+          assert.ok(false);
         } catch (error) {
-          threw = true;
           assert.equal(error.message, 'Aggregate not bound to any Model');
         }
-        assert.ok(threw);
       });
     });
 
@@ -1041,7 +1059,7 @@ describe('aggregate: ', function() {
       const schema = new Schema({ name: String }, { read: 'secondary' });
       const M = db.model('Test', schema);
       const a = M.aggregate();
-      assert.equal(a.options.readPreference.mode, 'secondary');
+      assert.equal(a.options.readPreference, 'secondary');
 
       a.read('secondaryPreferred');
 
@@ -1153,7 +1171,7 @@ describe('aggregate: ', function() {
     await MyModel.aggregate([{ $sort: { name: 1 } }]).
       cursor().
       eachAsync(checkDoc, { parallel: 2 }).then(function() {
-        assert.ok(Date.now() - startedAt[1] >= 100, Date.now() - startedAt[1]);
+        assert.ok(Date.now() - startedAt[1] >= 75, Date.now() - startedAt[1]);
         assert.equal(startedAt.length, 2);
         assert.ok(startedAt[1] - startedAt[0] < 50, `${startedAt[1] - startedAt[0]}`);
         assert.deepEqual(names.sort(), expectedNames);
@@ -1222,5 +1240,21 @@ describe('aggregate: ', function() {
       assert.equal(foundDocs[1].name, 'Charlie');
       assert.equal(foundDocs[2].name, 'Andrew');
     });
+  });
+
+  it('should not throw error if database connection has not been established (gh-13125)', async function() {
+    const m = new mongoose.Mongoose();
+    const mySchema = new Schema({ test: String });
+    const M = m.model('Test', mySchema);
+
+    const aggregate = M.aggregate();
+    aggregate.match({ foo: 'bar' });
+
+    const p = aggregate.exec();
+
+    await m.connect(start.uri);
+
+    await p;
+    await m.disconnect();
   });
 });

@@ -1,5 +1,18 @@
-import { Schema, model, Model, Document, Types } from 'mongoose';
-import { expectError, expectType } from 'tsd';
+import {
+  Schema,
+  model,
+  Model,
+  Query,
+  Types,
+  HydratedDocument,
+  HydratedArraySubdocument,
+  HydratedSingleSubdocument,
+  DefaultSchemaOptions
+} from 'mongoose';
+import { expectAssignable, expectError, expectType } from 'tsd';
+import { autoTypedModel } from './models.test';
+import { autoTypedModelConnection } from './connection.test';
+import { AutoTypedSchemaType } from './schema.test';
 
 const Drink = model('Drink', new Schema({
   name: String
@@ -18,22 +31,15 @@ interface ITestBase {
   name?: string;
 }
 
-interface ITest extends ITestBase, Document {}
+type ITest = ITestBase;
+type TestDocument = ReturnType<Model<{ name?: string }>['hydrate']>;
 
 const Test = model<ITest>('Test', schema);
 
 void async function main() {
-  const doc: ITest = await Test.findOne().orFail();
+  const doc = await Test.findOne().orFail();
 
-  expectType<Promise<ITest>>(doc.remove());
-  expectType<void>(doc.remove({}, (err, doc) => {
-    expectType<Error | null>(err);
-    expectType<any>(doc);
-  }));
-  expectType<void>(doc.remove((err, doc) => {
-    expectType<Error | null>(err);
-    expectType<any>(doc);
-  }));
+  expectType<Query<any, TestDocument>>(doc.deleteOne());
 }();
 
 
@@ -52,16 +58,9 @@ void async function run() {
   test.validateSync({ pathsToSkip: ['name', 'age'] });
   test.validateSync({ pathsToSkip: 'name age' });
   test.validateSync({ pathsToSkip: 'name age', blub: 1 });
-  expectType<Promise<ITest & { _id: any; }>>(test.save());
-  expectType<Promise<ITest & { _id: any; }>>(test.save({}));
-  expectType<void>(test.save({}, (err, doc) => {
-    expectType<Error | null>(err);
-    expectType<ITest & { _id: any; }>(doc);
-  }));
-  expectType<void>(test.save((err, doc) => {
-    expectType<Error | null>(err);
-    expectType<ITest & { _id: any; }>(doc);
-  }));
+  const x = test.save();
+  expectAssignable<Promise<ITest & { _id: any; }>>(test.save());
+  expectAssignable<Promise<ITest & { _id: any; }>>(test.save({}));
 })();
 
 function gh10526<U extends ITest>(arg1: Model<U>) {
@@ -180,4 +179,136 @@ function gh11435() {
 async function gh11598() {
   const doc = await Test.findOne().orFail();
   doc.populate('favoritDrink', undefined, model('temp', new Schema()));
+}
+
+function autoTypedDocument() {
+  const AutoTypedModel = autoTypedModel();
+  const AutoTypeModelInstance = new AutoTypedModel({ unExistProperty: 1, description: 2 });
+
+  expectType<AutoTypedSchemaType['schema']['userName']>(AutoTypeModelInstance.userName);
+  expectType<AutoTypedSchemaType['schema']['favoritDrink']>(AutoTypeModelInstance.favoritDrink);
+  expectType<AutoTypedSchemaType['schema']['favoritColorMode']>(AutoTypeModelInstance.favoritColorMode);
+
+  // Document-Methods-tests
+  expectType<ReturnType<AutoTypedSchemaType['methods']['instanceFn']>>(new AutoTypedModel().instanceFn());
+
+}
+
+function autoTypedDocumentConnection() {
+  const AutoTypedModel = autoTypedModelConnection();
+  const AutoTypeModelInstance = new AutoTypedModel({ unExistProperty: 1, description: 2 });
+
+  expectType<AutoTypedSchemaType['schema']['userName']>(AutoTypeModelInstance.userName);
+  expectType<AutoTypedSchemaType['schema']['favoritDrink']>(AutoTypeModelInstance.favoritDrink);
+  expectType<AutoTypedSchemaType['schema']['favoritColorMode']>(AutoTypeModelInstance.favoritColorMode);
+
+  // Document-Methods-tests
+  expectType<ReturnType<AutoTypedSchemaType['methods']['instanceFn']>>(new AutoTypedModel().instanceFn());
+
+}
+
+async function gh11960() {
+  interface Nested {
+    dummy?: string;
+  }
+
+  interface Parent {
+    username?: string;
+    map?: Map<string, string>;
+    nested?: Nested;
+    nestedArray?: Nested[];
+  }
+
+  type ParentDocument = HydratedDocument<Parent, {
+    nested: HydratedSingleSubdocument<Nested>,
+    nestedArray: HydratedArraySubdocument<Nested>[]
+  }>;
+
+  const NestedSchema = new Schema({
+    dummy: { type: String }
+  });
+
+  type ParentModelType = Model<Parent, {}, {}, {}, ParentDocument>;
+
+  const ParentSchema = new Schema<
+  Parent,
+  ParentModelType,
+  {},
+  {},
+  {},
+  {},
+  DefaultSchemaOptions,
+  Parent,
+  ParentDocument
+  >({
+    username: { type: String },
+    map: { type: Map, of: String },
+    nested: { type: NestedSchema },
+    nestedArray: [{ type: NestedSchema }]
+  });
+
+  const ParentModel = model<Parent, ParentModelType>('Parent', ParentSchema);
+
+  {
+    const doc = new ParentModel({
+      username: 'user1',
+      map: { key1: 'value1', key2: 'value2' },
+      nested: { dummy: 'hello' },
+      nestedArray: [{ dummy: 'hello again' }]
+    });
+
+    expectType<ParentDocument>(doc);
+    expectType<Map<string, string> | undefined>(doc.map);
+    doc.nested!.parent();
+    doc.nestedArray?.[0].parentArray();
+  }
+
+  {
+    const doc = await ParentModel.create({
+      username: 'user1',
+      map: { key1: 'value1', key2: 'value2' },
+      nested: { dummy: 'hello' },
+      nestedArray: [{ dummy: 'hello again' }]
+    });
+
+    expectType<ParentDocument>(doc);
+    expectType<Map<string, string> | undefined>(doc.map);
+    doc.nested!.parent();
+    doc.nestedArray?.[0].parentArray();
+  }
+}
+
+function gh12290() {
+  interface IUser{
+    name: string;
+    age: number;
+  }
+  const schema = new Schema<IUser>({
+    name: String,
+    age: Number
+  });
+  const User = model<IUser>('User', schema);
+  const user = new User({ name: 'John', age: 30 });
+  user.isDirectModified(['name', 'age']);
+  user.isDirectModified('name age');
+  user.isDirectModified('name');
+}
+
+function gh13094() {
+  type UserDocumentNever = HydratedDocument<{ name: string }, Record<string, never>>;
+
+  const doc: UserDocumentNever = null as any;
+  expectType<string>(doc.name);
+
+  // The following currently fails.
+  /* type UserDocumentUnknown = HydratedDocument<{ name: string }, Record<string, unknown>>;
+
+  const doc2: UserDocumentUnknown = null as any;
+  expectType<string>(doc2.name); */
+
+  // The following currently fails.
+  /* type UserDocumentAny = HydratedDocument<{ name: string }, Record<string, any>>;
+
+  const doc3: UserDocumentAny = null as any;
+  expectType<string>(doc3.name); */
 }

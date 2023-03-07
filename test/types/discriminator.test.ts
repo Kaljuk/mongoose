@@ -2,7 +2,7 @@ import mongoose, { Document, Model, Schema, SchemaDefinition, SchemaOptions, Typ
 
 const schema: Schema = new Schema({ name: { type: 'String' } });
 
-interface IBaseTest extends Document {
+interface IBaseTest {
   name?: string;
 }
 
@@ -18,6 +18,12 @@ const doc: IDiscriminatorTest = new Disc({ name: 'foo', email: 'hi' });
 doc.name = 'bar';
 doc.email = 'hello';
 
+const Disc2 = Base.discriminator<IDiscriminatorTest>(
+  'Disc2',
+  new Schema({ email: { type: String } }),
+  { value: 'test', mergeHooks: false, mergePlugins: false }
+);
+
 function test(): void {
   enum CardType {
     Artifact = 'artifact',
@@ -26,7 +32,7 @@ function test(): void {
     Land = 'land',
   }
 
-  interface CardDb extends Document {
+  interface CardDb {
     _id: Types.ObjectId;
     type: CardType;
   }

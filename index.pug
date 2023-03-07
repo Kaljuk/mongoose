@@ -121,7 +121,7 @@ html(lang='en')
         :markdown
           ```javascript
           const mongoose = require('mongoose');
-          mongoose.connect('mongodb://localhost:27017/test');
+          mongoose.connect('mongodb://127.0.0.1:27017/test');
 
           const Cat = mongoose.model('Cat', { name: String });
 
@@ -151,8 +151,7 @@ html(lang='en')
 
           * [Stack Overflow](http://stackoverflow.com/questions/tagged/mongoose)
           * [GitHub Issues](https://github.com/Automattic/mongoose/issues)
-          * [Gitter Chat](https://gitter.im/Automattic/mongoose)
-          * [MongoDB Support](http://www.mongodb.org/about/support/)
+          * [MongoDB Support](https://www.mongodb.com/docs/manual/support/)
 
           ## News
 
@@ -167,13 +166,16 @@ html(lang='en')
           <div class="sponsors">
             <div>
               <a rel="sponsored" href="https://localizejs.com/">
-                <img class="sponsor" src="//images.ctfassets.net/3ouphkrynjol/3mfb7HH2YowrPxX9C6ik6H/723034bcb4e99349663c4bc8223fb8b6/localizejs.com.png" style="height: 100px">
+                <img class="sponsor" src="https://assets.localizecdn.com/uploads/1609766994137.svg" style="height: 100px">
               </a>
               <a rel="sponsored" href="https://birb.app/">
                 <img class="sponsor" src="https://uploads-ssl.webflow.com/618b15b23212e0b2b4f8f67b/618b189f1d441fd9e0f6c5f3_logo-black-text.png" style="height: 100px">
               </a>
               <a rel="sponsored" href="https://helloclub.com/?source=Mongoose">
-                <img class="sponsor" src="https://helloclub.com/images/logo/logo-text-white.svg" style="height:100px">
+                <img class="sponsor" src="https://codebarbarian-images.s3.amazonaws.com/logo-text-default.svg" style="height:100px">
+              </a>
+              <a rel="sponsored" href="https://devitjobs.us/?utm_source=mongoose_main">
+                <img class="sponsor" src="https://codebarbarian-images.s3.amazonaws.com/devitUS-flat-rectangle-v4.png" style="height:100px">
               </a>
             </div>
           </div>
@@ -183,15 +185,13 @@ html(lang='en')
         div.sponsors
           div
             each sponsor in opencollectiveSponsors
-              a(rel='sponsored', href=sponsor.website, alt=sponsor.alt)
-                img.sponsor(src=sponsor.image || null, style='height:50px')
+              a(rel='sponsored', href=sponsor.website || sponsor.profile)
+                img.sponsor(src=sponsor.image || 'https://next-images.opencollective.com/_next/image?url=%2Fstatic%2Fimages%2Fopencollective-icon.png&w=96&q=75', style='height:50px', alt=sponsor.alt)
 
-        <div class="sponsor">
-          Sponsor <a href="https://opencollective.com/mongoose">Mongoose on OpenCollective</a>
-          to get your company's logo above!
-        </div>
+        div.sponsors
+          :markdown
+            Sponsor [Mongoose on OpenCollective](https://opencollective.com/mongoose) to get your company's logo above!
 
     p#footer Licensed under MIT.
     script.
       document.body.className = 'load';
-    include docs/includes/track

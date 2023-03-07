@@ -1,5 +1,5 @@
 import * as mongoose from 'mongoose';
-import { expectType } from 'tsd';
+import { expectError, expectType } from 'tsd';
 
 Object.values(mongoose.models).forEach(model => {
   model.modelName;
@@ -30,7 +30,7 @@ function connectionStates() {
   m.STATES.connected;
   m.ConnectionStates.connected;
 
-  m.connect('mongodb://localhost:27017/test').then(() => {
+  m.connect('mongodb://127.0.0.1:27017/test').then(() => {
     console.log('Connected!');
   });
 
@@ -41,4 +41,22 @@ function connectionStates() {
 function gh11478() {
   mongoose.set('allowDiskUse', false);
   mongoose.set('allowDiskUse', true);
+}
+
+function gh10139() {
+  mongoose.set('timestamps.createdAt.immutable', false);
+}
+
+function gh12100() {
+  mongoose.syncIndexes({ continueOnError: true, noResponse: true });
+  mongoose.syncIndexes({ continueOnError: false, noResponse: true });
+}
+
+function setAsObject() {
+  mongoose.set({
+    debug: true,
+    autoIndex: false
+  });
+
+  expectError(mongoose.set({ invalid: true }));
 }

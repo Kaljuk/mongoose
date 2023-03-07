@@ -10,14 +10,16 @@ const Schema = mongoose.Schema;
 
 const uri = process.env.MONGOOSE_SHARD_TEST_URI;
 const redColorEscapeCharacter = '\x1b[31m';
+const colorResetEscapeCharacter = '\u001b[39m';
 
 if (!uri) {
   console.log([
     redColorEscapeCharacter,
     'You\'re not testing shards!',
     'Please set the MONGOOSE_SHARD_TEST_URI env variable.',
-    'e.g: `mongodb://localhost:27017/database',
-    'Sharding must already be enabled on your database'
+    'e.g: `mongodb://127.0.0.1:27017/database',
+    'Sharding must already be enabled on your database',
+    colorResetEscapeCharacter
   ].join('\n'));
 
   return;

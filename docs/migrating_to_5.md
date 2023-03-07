@@ -61,7 +61,7 @@ MyModel.find().exec(function() {
 ```
 
 <h3 id="promises-and-callbacks"><a href="#promises-and-callbacks">
-  Promises and Callbacks for `mongoose.connect()`
+  Promises and Callbacks for <code>mongoose.connect()</code>
 </a></h3>
 
 `mongoose.connect()` and `mongoose.disconnect()` now return a promise if no callback specified, or `null` otherwise. It does **not** return the mongoose singleton.
@@ -70,15 +70,15 @@ MyModel.find().exec(function() {
 // Worked in mongoose 4. Does **not** work in mongoose 5, `mongoose.connect()`
 // now returns a promise consistently. This is to avoid the horrible things
 // we've done to allow mongoose to be a thenable that resolves to itself.
-mongoose.connect('mongodb://localhost:27017/test').model('Test', new Schema({}));
+mongoose.connect('mongodb://127.0.0.1:27017/test').model('Test', new Schema({}));
 
 // Do this instead
-mongoose.connect('mongodb://localhost:27017/test');
+mongoose.connect('mongodb://127.0.0.1:27017/test');
 mongoose.model('Test', new Schema({}));
 ```
 
 <h3 id="connection-logic"><a href="#connection-logic">
-  Connection Logic and `useMongoClient`
+  Connection Logic and <code>useMongoClient</code>
 </a></h3>
 
 The [`useMongoClient` option](/docs/4.x/docs/connections.html#use-mongo-client) was
@@ -87,11 +87,11 @@ no longer supports several function signatures for `mongoose.connect()` that
 worked in Mongoose 4.x if the `useMongoClient` option was off. Below are some
 examples of `mongoose.connect()` calls that do **not** work in Mongoose 5.x.
 
-* `mongoose.connect('localhost', 27017);`
-* `mongoose.connect('localhost', 'mydb', 27017);`
+* `mongoose.connect('127.0.0.1', 27017);`
+* `mongoose.connect('127.0.0.1', 'mydb', 27017);`
 * `mongoose.connect('mongodb://host1:27017,mongodb://host2:27017');`
 
-In Mongoose 5.x, the first parameter to `mongoose.connect()` and `mongoose.createConnection()`, if specified, **must** be a [MongoDB connection string](https://docs.mongodb.com/manual/reference/connection-string/). The
+In Mongoose 5.x, the first parameter to `mongoose.connect()` and `mongoose.createConnection()`, if specified, **must** be a [MongoDB connection string](https://www.mongodb.com/docs/manual/reference/connection-string/). The
 connection string and options are then passed down to [the MongoDB Node.js driver's `MongoClient.connect()` function](http://mongodb.github.io/node-mongodb-native/3.0/api/MongoClient.html#.connect). Mongoose does not modify the connection string, although `mongoose.connect()` and `mongoose.createConnection()` support a [few additional options in addition to the ones the MongoDB driver supports](http://mongoosejs.com/docs/connections.html#options).
 
 <h3 id="setter-order"><a href="#setter-order">
@@ -149,7 +149,7 @@ As a consequence, checking whether `blogPost.author._id` is [no longer viable as
 Note that you can call `mongoose.set('objectIdGetter', false)` to change this behavior.
 
 <h3 id="return-value-for-delete"><a href="#return-value-for-delete">
-  Return Values for `remove()` and `deleteX()`
+  Return Values for <code>remove()</code> and <code>deleteX()</code>
 </a></h3>
 
 `deleteOne()`, `deleteMany()`, and `remove()` now resolve to the result object
@@ -186,7 +186,7 @@ const cursorWithOptions = MyModel.
   geoNear
 </a></h3>
 
-`Model.geoNear()` has been removed because the [MongoDB driver no longer supports it](https://github.com/mongodb/node-mongodb-native/blob/master/CHANGES_3.0.0.md#geonear-command-helper)
+`Model.geoNear()` has been removed because the [MongoDB driver no longer supports it](https://github.com/mongodb/node-mongodb-native/blob/4bac63ce7b9e9fff87c31c5a27d78bcdaca12669/etc/notes/CHANGES_3.0.0.md#geonear-command-helper)
 
 <h3 id="uri-encoding"><a href="#uri-encoding">
   Required URI encoding of connection strings
@@ -211,19 +211,18 @@ the `mongodb-uri` module to parse the connection strings, and then produce the p
 versions. You can use a function like this:
 
 ```javascript
-const uriFormat = require('mongodb-uri')
+const uriFormat = require('mongodb-uri');
 function encodeMongoURI (urlString) {
     if (urlString) {
-      let parsed = uriFormat.parse(urlString)
+      let parsed = uriFormat.parse(urlString);
       urlString = uriFormat.format(parsed);
     }
     return urlString;
-  }
 }
 
 // Your un-encoded string.
 const mongodbConnectString = "mongodb://...";
-mongoose.connect(encodeMongoURI(mongodbConnectString))
+mongoose.connect(encodeMongoURI(mongodbConnectString));
 ```
 
 The function above is safe to use whether the existing string is already encoded or not.
@@ -246,7 +245,7 @@ mongoose.createConnection(`mongodb://aaron:psw@${host}/fake`);
 ```
 
 <h3 id="toobject-options"><a href="#toobject-options">
-  `toObject()` Options
+  <code>toObject()</code> Options
 </a></h3>
 
 The `options` parameter to `toObject()` and `toJSON()` merge defaults rather than overwriting them.
@@ -362,10 +361,10 @@ m.save(function() {
 ```
 
 <h3 id="pushall"><a href="#pushall">
-  The `$pushAll` Operator
+  The <code>$pushAll</code> Operator
 </a></h3>
 
-`$pushAll` is no longer supported and no longer used internally for `save()`, since it has been [deprecated since MongoDB 2.4](https://docs.mongodb.com/manual/reference/operator/update/pushAll/). Use `$push` with `$each` instead.
+`$pushAll` is no longer supported and no longer used internally for `save()`, since it has been [deprecated since MongoDB 2.4](https://www.mongodb.com/docs/manual/reference/operator/update/pushAll/). Use `$push` with `$each` instead.
 
 <h3 id="retain-key-order"><a href="#retain-key-order">
   Always Use Forward Key Order
@@ -410,19 +409,19 @@ The `saveErrorIfNotFound` option was removed, mongoose will now always error out
 was always synchronous, just had a callback for legacy reasons.
 
 <h3 id="save-num-affected"><a href="#save-num-affected">
-  `numAffected` and `save()`
+  <code>numAffected</code> and <code>save()</code>
 </a></h3>
 
 `doc.save()` no longer passes `numAffected` as a 3rd param to its callback.
 
 <h3 id="remove-debounce"><a href="#remove-debounce">
-  `remove()` and debouncing
+  <code>remove()</code> and debouncing
 </a></h3>
 
 `doc.remove()` no longer debounces
 
 <h3 id="get-promise-constructor"><a href="#get-promise-constructor">
-  `getPromiseConstructor()`
+  <code>getPromiseConstructor()</code>
 </a></h3>
 
 `getPromiseConstructor()` is gone, just use `mongoose.Promise`.
@@ -435,7 +434,7 @@ You cannot pass parameters to the next pre middleware in the chain using `next()
 next middleware with 'Test' as a parameter. Mongoose 5.x has removed support for this.
 
 <h3 id="array-required"><a href="#array-required">
-  `required` validator for arrays
+  <code>required</code> validator for arrays
 </a></h3>
 
 In mongoose 5 the `required` validator only verifies if the value is an
@@ -461,11 +460,11 @@ Sport.find({ name: 'baseball' }).where({name: {$ne: 'softball'}});
 In Mongoose 5.x, the above code will correctly overwrite `'baseball'` with `{ $ne: 'softball' }` 
 
 <h3 id="bulkwrite-results"><a href="#bulkwrite-results">
-  `bulkWrite()` results
+  <code>bulkWrite()</code> results
 </a></h3>
 
 Mongoose 5.x uses version 3.x of the [MongoDB Node.js driver](http://npmjs.com/package/mongodb). MongoDB driver 3.x changed the format of
-the result of [`bulkWrite()` calls](/docs/api.html#model_Model.bulkWrite) so there is no longer a top-level `nInserted`, `nModified`, etc. property. The new result object structure is [described here](http://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#~BulkWriteOpResult).
+the result of [`bulkWrite()` calls](api/model.html#model_Model-bulkWrite) so there is no longer a top-level `nInserted`, `nModified`, etc. property. The new result object structure is [described here](http://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#~BulkWriteOpResult).
 
 ```javascript
 const Model = mongoose.model('Test', new Schema({ name: String }));

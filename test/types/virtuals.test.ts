@@ -1,4 +1,5 @@
-import { Document, Model, Schema, model } from 'mongoose';
+import { Document, Model, Schema, model, InferSchemaType, FlatRecord, ObtainSchemaGeneric } from 'mongoose';
+import { expectType } from 'tsd';
 
 interface IPerson {
   _id: number;
@@ -13,6 +14,10 @@ interface IPet {
   isDeleted: boolean;
   ownerId: number;
 
+  owner: IPerson;
+}
+
+interface PetVirtuals {
   owner: IPerson;
 }
 
@@ -71,3 +76,50 @@ const Pet = model<IPet>('Pet', petSchema);
   const pet = await Pet.findOne().orFail().populate('owner');
   console.log(pet.owner.fullName); // John Wick
 })();
+
+function gh11543() {
+  const personSchema = new Schema<IPerson, Model<IPerson, {}, {}, PetVirtuals>, {}, {}, PetVirtuals>({
+    _id: { type: Number, required: true },
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true }
+  });
+
+  expectType<PetVirtuals>(personSchema.virtuals);
+}
+
+async function autoTypedVirtuals() {
+  type AutoTypedSchemaType = InferSchemaType<typeof testSchema>;
+  type VirtualsType = { domain: string };
+  type InferredDocType = FlatRecord<AutoTypedSchemaType & ObtainSchemaGeneric<typeof testSchema, 'TVirtuals'>>;
+
+  const testSchema = new Schema({
+    email: {
+      type: String,
+      required: [true, 'email is required']
+    }
+  }, {
+    virtuals: {
+      domain: {
+        get() {
+          expectType<Document<any, any, { email: string }> & AutoTypedSchemaType>(this);
+          return this.email.slice(this.email.indexOf('@') + 1);
+        },
+        set() {
+          expectType<Document<any, any, AutoTypedSchemaType> & AutoTypedSchemaType>(this);
+        },
+        options: {}
+      }
+    }
+  });
+
+
+  const TestModel = model('AutoTypedVirtuals', testSchema);
+
+  const doc = new TestModel();
+  expectType<string>(doc.domain);
+
+  expectType<FlatRecord<AutoTypedSchemaType & VirtualsType >>({} as InferredDocType);
+
+  const doc2 = await TestModel.findOne().orFail();
+  expectType<string>(doc2.domain);
+}

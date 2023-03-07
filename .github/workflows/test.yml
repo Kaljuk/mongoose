@@ -8,8 +8,6 @@ on:
       - 'lib/**'
       - 'test/**.js'
   push:
-    branches:
-      - master
     paths:
       - '.github/workflows/test.yml'
       - 'package.json'
@@ -24,10 +22,10 @@ jobs:
     runs-on: ubuntu-latest
     name: Lint JS-Files
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b # v3.0.2
+      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
 
       - name: Setup node
-        uses: actions/setup-node@56337c425554a6be30cdef71bf441f15be286854 # v3.1.1
+        uses: actions/setup-node@64ed1c7eab4cce3362f8c340dee64e5eaeef8f7c # v3.6.0
         with:
           node-version: 14
 
@@ -37,46 +35,82 @@ jobs:
         run: npm run lint-js
 
   test:
-    needs:
-      - lint
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        node: [12, 14, 16, 18]
-        os: [ubuntu-18.04, ubuntu-20.04]
+        node: [14, 16, 18]
+        os: [ubuntu-20.04, ubuntu-22.04]
+        mongodb: [4.4.18, 5.0.14, 6.0.4]
         include:
-          - os: ubuntu-18.04
-            mongo-os: ubuntu1804
-            mongo: 4.0.2
-          - os: ubuntu-20.04
-            mongo-os: ubuntu2004
-            mongo: 5.0.2
+          - os: ubuntu-20.04 # customize on which matrix the coverage will be collected on
+            mongodb: 5.0.14
+            node: 16
+            coverage: true
         exclude:
-          - os: ubuntu-18.04
-            node: 18
-    name: Node ${{ matrix.node }} MongoDB ${{ matrix.mongo }}
+          - os: ubuntu-22.04 # exclude because there are no 4.x mongodb builds for 2204
+            mongodb: 4.4.18
+          - os: ubuntu-22.04 # exclude because there are no 5.x mongodb builds for 2204
+            mongodb: 5.0.14
+    name: Node ${{ matrix.node }} MongoDB ${{ matrix.mongodb }} OS ${{ matrix.os }}
+    env:
+      MONGOMS_VERSION: ${{ matrix.mongodb }}
+      MONGOMS_PREFER_GLOBAL_PATH: 1
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b # v3.0.2
+      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
 
       - name: Setup node
-        uses: actions/setup-node@56337c425554a6be30cdef71bf441f15be286854 # v3.1.1
+        uses: actions/setup-node@64ed1c7eab4cce3362f8c340dee64e5eaeef8f7c # v3.6.0
         with:
           node-version: ${{ matrix.node }}
 
-      - run: npm install
+      - name: Load MongoDB binary cache
+        id: cache-mongodb-binaries
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: ${{ matrix.os }}-${{ matrix.mongodb }}
 
-      - name: Setup
-        run: |
-          wget -q https://downloads.mongodb.org/linux/mongodb-linux-x86_64-${{ matrix.mongo-os }}-${{ matrix.mongo }}.tgz
-          tar xf mongodb-linux-x86_64-${{ matrix.mongo-os }}-${{ matrix.mongo }}.tgz
-          mkdir -p ./data/db/27017 ./data/db/27000
-          printf "\n--timeout 8000" >> ./test/mocha.opts
-          ./mongodb-linux-x86_64-${{ matrix.mongo-os }}-${{ matrix.mongo }}/bin/mongod --setParameter ttlMonitorSleepSecs=1 --fork --dbpath ./data/db/27017 --syslog --port 27017
-          sleep 2
-          mongod --version
-          echo `pwd`/mongodb-linux-x86_64-${{ matrix.mongo-os }}-${{ matrix.mongo }}/bin >> $GITHUB_PATH
-      - run: npm test
+      - run: npm install
+      - name: NPM Test without Coverage
+        run: npm test
+        if: matrix.coverage != true
+      - name: NPM Test with Coverage
+        run: npm run test-coverage
+        if: matrix.coverage == true
+      - name: Archive code coverage results
+        uses: actions/upload-artifact@v3
+        if: matrix.coverage == true
+        with:
+          name: coverage
+          path: coverage
+  
+  test-deno:
+    runs-on: ubuntu-20.04
+    name: Deno tests
+    env:
+      MONGOMS_VERSION: 6.0.4
+      MONGOMS_PREFER_GLOBAL_PATH: 1
+    steps:
+      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+      - name: Setup node
+        uses: actions/setup-node@64ed1c7eab4cce3362f8c340dee64e5eaeef8f7c # v3.6.0
+        with:
+          node-version: 16
+      - name: Load MongoDB binary cache
+        id: cache-mongodb-binaries
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: deno-${{ env.MONGOMS_VERSION }}
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.30.x
+      - run: deno --version
+      - run: npm install
+      - name: Run Deno tests
+        run: npm run test-deno
 
   test-replica-sets:
     needs:
@@ -84,41 +118,23 @@ jobs:
     runs-on: ubuntu-latest
     name: Replica Set tests
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b # v3.0.2
+      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
       - name: Setup node
-        uses: actions/setup-node@56337c425554a6be30cdef71bf441f15be286854 # v3.1.1
+        uses: actions/setup-node@64ed1c7eab4cce3362f8c340dee64e5eaeef8f7c # v3.6.0
         with:
           node-version: 16
       - run: npm install
       - name: Test
         run: npm run test-rs
 
-  coverage:
-    needs:
-      - test-replica-sets
-    runs-on: ubuntu-20.04
-    name: Coverage
+  dependency-review:
+    name: Dependency Review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b # v3.0.2
-      - name: Setup node
-        uses: actions/setup-node@56337c425554a6be30cdef71bf441f15be286854 # v3.1.1
-        with:
-          node-version: 16
-      - run: npm install
-      - name: Setup
-        run: |
-          wget -q https://downloads.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-5.0.2.tgz
-          tar xf mongodb-linux-x86_64-ubuntu2004-5.0.2.tgz
-          mkdir -p ./data/db/27017 ./data/db/27000
-          printf "\n--timeout 8000" >> ./test/mocha.opts
-          ./mongodb-linux-x86_64-ubuntu2004-5.0.2/bin/mongod --setParameter ttlMonitorSleepSecs=1 --fork --dbpath ./data/db/27017 --syslog --port 27017
-          sleep 2
-          mongod --version
-          echo `pwd`/mongodb-linux-x86_64-ubuntu2004-5.0.2/bin >> $GITHUB_PATH
-      - name: test with coverage
-        run: npm run test-coverage
-      - name: Archive code coverage results
-        uses: actions/upload-artifact@v3
-        with:
-          name: coverage
-          path: coverage
+      - name: Check out repo
+        uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+      - name: Dependency review
+        uses: actions/dependency-review-action@v3

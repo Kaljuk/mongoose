@@ -9,9 +9,9 @@ This guide describes Mongoose's recommended approach to working with Mongoose in
 To get started with Mongoose in TypeScript, you need to: 
 
 1. Create an interface representing a document in MongoDB.
-2. Create a [Schema](/docs/guide.html) corresponding to the document interface.
+2. Create a [Schema](guide.html) corresponding to the document interface.
 3. Create a Model.
-4. [Connect to MongoDB](/docs/connections.html).
+4. [Connect to MongoDB](connections.html).
 
 ```typescript
 import { Schema, model, connect } from 'mongoose';
@@ -37,7 +37,7 @@ run().catch(err => console.log(err));
 
 async function run() {
   // 4. Connect to MongoDB
-  await connect('mongodb://localhost:27017/test');
+  await connect('mongodb://127.0.0.1:27017/test');
 
   const user = new User({
     name: 'Bill',
@@ -91,30 +91,7 @@ const userSchema = new Schema<IUser>({
 });
 ```
 
-That's because `Schema.Types.ObjectId` is a [class that inherits from SchemaType](/docs/schematypes.html), **not** the class you use to create a new MongoDB ObjectId.
-
-### Using `extends Document`
-
-Alternatively, your document interface can extend Mongoose's `Document` class.
-
-We **strongly** recommend against using this approach, its support will be dropped in the next major version as it causes major performance issues.
-Many Mongoose TypeScript codebases use the below approach.
-
-```typescript
-import { Document, Schema, model, connect } from 'mongoose';
-
-interface IUser extends Document {
-  name: string;
-  email: string;
-  avatar?: string;
-}
-```
-
-This approach works, but we recommend your document interface _not_ extend `Document`.
-Using `extends Document` makes it difficult for Mongoose to infer which properties are present on [query filters](/docs/queries.html), [lean documents](/docs/tutorials/lean.html), and other cases.
-
-We recommend your document interface contain the properties defined in your schema and line up with what your documents look like in MongoDB.
-Although you can add [instance methods](/docs/guide.html#methods) to your document interface, we do not recommend doing so.
+That's because `Schema.Types.ObjectId` is a [class that inherits from SchemaType](schematypes.html), **not** the class you use to create a new MongoDB ObjectId.
 
 ### Using Custom Bindings
 
@@ -129,4 +106,4 @@ However, before you do, please [open an issue on Mongoose's GitHub page](https:/
 
 ### Next Up
 
-Now that you've seen the basics of how to use Mongoose in TypeScript, let's take a look at [statics in TypeScript](/docs/typescript/statics-and-methods.html).
+Now that you've seen the basics of how to use Mongoose in TypeScript, let's take a look at [statics in TypeScript](typescript/statics-and-methods.html).
